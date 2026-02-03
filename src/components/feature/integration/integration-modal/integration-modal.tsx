@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   InstallFlowError,
   CredentialStatus,
@@ -18,6 +18,7 @@ import {
 import { TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tabs } from '@/components/ui/tabs';
 import { IntegrationInstallFlowForm } from '@/components/feature/integration/integration-install-flow-form';
+import { getWorkfrontInitialPreOptions } from '@/lib/workfront-preopts';
 
 import { ActionButton } from './components/action-button';
 import { WorkflowSection } from './components/workflows';
@@ -61,7 +62,27 @@ export function IntegrationModal(props: Props) {
     stage?: InstallFlowStage['stage'];
     error: InstallFlowError;
   } | null>(null);
+  const workfrontPreOptionsSentRef = useRef(false);
   const isConnected = props.status === CredentialStatus.VALID;
+
+  const isWorkfrontPreOptionsStage =
+    props.integration === 'custom.workfront' &&
+    installFlowStage?.stage === 'preOptions';
+
+  useEffect(() => {
+    if (!isWorkfrontPreOptionsStage || workfrontPreOptionsSentRef.current)
+      return;
+    workfrontPreOptionsSentRef.current = true;
+    paragon.installFlow.setPreOptions(
+      getWorkfrontInitialPreOptions(),
+      (error) => {
+        setInstallationError({
+          error: error as InstallFlowError,
+        });
+      }
+    );
+  }, [isWorkfrontPreOptionsStage, installFlowStage]);
+
   const configurationTabDisabled =
     !props.selectedCredentialId ||
     !isConnected ||
@@ -76,6 +97,7 @@ export function IntegrationModal(props: Props) {
 
   const doEnable = async () => {
     setInstallationError(null);
+    workfrontPreOptionsSentRef.current = false;
     setIsInstalling(true);
     paragon.installFlow.start(props.integration, {
       allowMultipleCredentials: true,
@@ -199,7 +221,7 @@ export function IntegrationModal(props: Props) {
               </p>
             </div>
           )}
-          {showFlowForm && installFlowStage ? (
+          {showFlowForm && installFlowStage && !isWorkfrontPreOptionsStage ? (
             <div className="flex flex-col gap-4">
               <IntegrationInstallFlowForm
                 integration={props.integration}
@@ -217,6 +239,10 @@ export function IntegrationModal(props: Props) {
               {showStageError && (
                 <ErrorMessage error={installationError.error} />
               )}
+            </div>
+          ) : isWorkfrontPreOptionsStage ? (
+            <div className="p-6 text-center text-muted-foreground">
+              Redirecting to connect your account…
             </div>
           ) : (
             <Tabs value={tab} onValueChange={setTab} className="w-full">

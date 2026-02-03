@@ -16,6 +16,7 @@ type InstallFlowStage = ReturnType<typeof paragon.installFlow.next>;
 type Props = {
   integration: string;
   installFlowStage: InstallFlowStage;
+  initialPreOptions?: Record<string, ConnectInputValue>;
   onSelectAccount: (accountId: string) => void;
   onFinishPreOptions: (preOptions: Record<string, ConnectInputValue>) => void;
   onFinishPostOptions: (postOptions: Record<string, ConnectInputValue>) => void;
@@ -35,6 +36,7 @@ export function IntegrationInstallFlowForm(props: Props) {
         <PreOptionsForm
           integration={props.integration}
           options={props.installFlowStage.options}
+          initialPreOptions={props.initialPreOptions}
           onSubmit={props.onFinishPreOptions}
         />
       );
@@ -80,9 +82,12 @@ function AccountTypePicker(props: {
 function PreOptionsForm(props: {
   integration: string;
   options: IntegrationConnectInput[];
+  initialPreOptions?: Record<string, ConnectInputValue>;
   onSubmit: (options: Record<string, ConnectInputValue>) => void;
 }) {
-  const form = useForm<Record<string, ConnectInputValue>>();
+  const form = useForm<Record<string, ConnectInputValue>>({
+    defaultValues: props.initialPreOptions ?? {},
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -91,7 +96,7 @@ function PreOptionsForm(props: {
         const defaultValue =
           serialized.type === SidebarInputType.Permission
             ? serialized.requiredScopes.join(' ')
-            : option.defaultValue;
+            : (props.initialPreOptions?.[option.id] ?? option.defaultValue);
 
         return (
           <Controller
